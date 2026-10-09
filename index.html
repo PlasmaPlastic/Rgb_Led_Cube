@@ -1,0 +1,541 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LED Cube Simulator - 16³ RGB Voxel</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#070a12;
+  --panel:#101525;
+  --panel2:#151b31;
+  --line:#1e2747;
+  --text:#d7e0ff;
+  --muted:#7f8ab5;
+  --accent:#6d8cff;
+  --accent2:#7affc8;
+  --danger:#ff5d73
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0
+}
+
+body{
+  background:radial-gradient(1200px 600px at 70% -10%, #1b2550 0%, transparent 60%), var(--bg);
+  color:var(--text);
+  font-family:"Space Grotesk",system-ui,sans-serif;
+  overflow:hidden
+}
+
+#app{
+  display:grid;
+  grid-template-columns:320px 1fr 320px;
+  grid-template-rows:64px 1fr;
+  height:100vh
+}
+
+header{
+  grid-column:1/4;
+  background:rgba(16,21,37,0.9);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px
+}
+
+header h1{
+  font-size:18px;
+  letter-spacing:-0.02em;
+  display:flex;
+  gap:10px;
+  align-items:center
+}
+
+header h1 span.badge{
+  font-size:11px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  color:#08101a;
+  padding:2px 8px;
+  border-radius:99px;
+  font-weight:700
+}
+
+header .right{
+  display:flex;
+  gap:8px;
+  align-items:center
+}
+
+button,select{
+  font-family:"JetBrains Mono",monospace;
+  background:var(--panel2);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px 12px;
+  font-size:13px;
+  cursor:pointer;
+  transition:.2s
+}
+
+button:hover{
+  border-color:var(--accent);
+  transform:translateY(-1px)
+}
+
+button.primary{
+  background:var(--accent);
+  color:#08101a;
+  border-color:var(--accent);
+  font-weight:700
+}
+
+button.danger{
+  background:transparent;
+  color:var(--danger);
+  border-color:#3a2030
+}
+
+#left,#right{
+  background:rgba(16,21,37,0.75);
+  backdrop-filter:blur(12px);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  overflow:auto
+}
+
+#right{
+  border-right:none;
+  border-left:1px solid var(--line)
+}
+
+.panel{
+  padding:18px;
+  border-bottom:1px solid var(--line)
+}
+
+.panel h3{
+  font-size:12px;
+  letter-spacing:0.12em;
+  color:var(--muted);
+  margin-bottom:12px;
+  text-transform:uppercase
+}
+
+.row{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px
+}
+
+.row > *{
+  flex:1
+}
+
+label{
+  font-size:12px;
+  color:var(--muted);
+  display:block;
+  margin-bottom:6px;
+  font-family:"JetBrains Mono",monospace
+}
+
+input[type="range"]{
+  width:100%;
+  accent-color:var(--accent)
+}
+
+.kv{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px;
+  font-family:"JetBrains Mono",monospace;
+  font-size:12px;
+  padding:6px 0;
+  border-bottom:1px dashed #1d2543
+}
+
+.kv b{
+  color:var(--muted);
+  font-weight:400
+}
+
+#viewport{
+  position:relative;
+  background:radial-gradient(800px 500px at 50% 0%, #1c2750 0%, transparent 70%)
+}
+
+#glcanvas{
+  width:100%;
+  height:100%;
+  display:block;
+  cursor:grab
+}
+
+#glcanvas:active{
+  cursor:grabbing
+}
+
+#overlay{
+  position:absolute;
+  left:16px;
+  bottom:16px;
+  background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 14px;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  line-height:1.6
+}
+
+#overlay b{
+  color:var(--accent2)
+}
+
+.code-box{
+  background:#0b0f1d;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  white-space:pre-wrap;
+  max-height:220px;
+  overflow:auto
+}
+
+.badge-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent2);
+  display:inline-block;
+  box-shadow:0 0 10px var(--accent2)
+}
+
+.grid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+
+.tag{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:99px;
+  background:var(--panel2);
+  border:1px solid var(--line)
+}
+
+canvas#mini{
+  width:100%;
+  height:80px;
+  background:#0b0f1d;
+  border-radius:8px;
+  border:1px solid var(--line)
+}
+
+@media(max-width:1200px){
+  #app{
+    grid-template-columns:1fr;
+    grid-template-rows:64px 420px auto auto
+  }
+
+  #left,#right{
+    border:none;
+    border-top:1px solid var(--line)
+  }
+
+  header{
+    grid-column:1
+  }
+
+  #viewport{
+    height:420px
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+<header>
+  <h1>
+    LED CUBE SIM
+    <span class="badge">WebGL • 16³</span>
+    <span class="badge-dot"></span>
+  </h1>
+
+  <div class="right">
+    <button id="btnPlay" class="primary">▶ PLAY</button>
+    <button id="btnPause">⏸ PAUSE</button>
+    <button id="btnExport">EXPORT .JSON</button>
+  </div>
+</header>
+
+
+<aside id="left">
+
+  <div class="panel">
+    <h3>Cube Configuration</h3>
+
+    <label>Cube Size</label>
+
+    <div class="grid2">
+      <button data-size="6">
+        6×6×6<br>
+        <small>216 LEDs</small>
+      </button>
+
+      <button data-size="8" class="primary">
+        8×8×8<br>
+        <small>512 LEDs</small>
+      </button>
+
+      <button data-size="16">
+        16×16×16<br>
+        <small>4096 LEDs</small>
+      </button>
+
+      <button data-size="4">
+        4×4×4<br>
+        <small>64 LEDs</small>
+      </button>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <label>LED Type</label>
+
+    <select id="ledType">
+      <option value="diffused">Diffused 5mm (Video Style)</option>
+      <option value="clear">Clear RGB</option>
+      <option value="square">Square Pixel</option>
+    </select>
+
+    <label>Wiring</label>
+
+    <select id="wiring">
+      <option value="serpentine">Serpentine (Realistic)</option>
+      <option value="linear">Linear</option>
+    </select>
+  </div>
+
+
+  <div class="panel">
+    <h3>Simulation</h3>
+
+    <label>Animation</label>
+
+    <select id="animSelect">
+      <option value="rainbow">🌈 Rainbow Wave</option>
+      <option value="wave">🌊 Wave XYZ</option>
+      <option value="rain">🌧 Rain Fall</option>
+      <option value="spiral">🌀 Spiral</option>
+      <option value="fire">🔥 Fire</option>
+      <option value="heart">❤ Heart Beat</option>
+      <option value="plane">✈ Plane Scan</option>
+      <option value="text">Text Scroller (TEST)</option>
+      <option value="off">OFF</option>
+    </select>
+
+    <div style="margin-top:12px">
+
+      <label>
+        FPS <span id="fpsVal">60</span>
+        • Speed <span id="speedVal">1.0x</span>
+      </label>
+
+      <input
+        id="speed"
+        type="range"
+        min="0"
+        max="2"
+        step="0.05"
+        value="1"
+      />
+
+      <label>
+        Brightness <span id="brightVal">100%</span>
+      </label>
+
+      <input
+        id="brightness"
+        type="range"
+        min="0.1"
+        max="2"
+        step="0.05"
+        value="1"
+      />
+
+      <label>LED Size</label>
+
+      <input
+        id="ledSize"
+        type="range"
+        min="0.15"
+        max="1.2"
+        step="0.05"
+        value="0.55"
+      />
+
+      <label>Auto Rotate</label>
+
+      <input
+        id="autoRot"
+        type="range"
+        min="0"
+        max="1.5"
+        step="0.05"
+        value="0.4"
+      />
+
+    </div>
+  </div>
+
+
+  <div class="panel">
+    <h3>Hardware Statistics</h3>
+
+    <div id="stats"></div>
+
+    <canvas id="mini"></canvas>
+  </div>
+
+</aside>
+
+
+<div id="viewport">
+
+  <canvas id="glcanvas"></canvas>
+
+  <div id="overlay">
+    DRAG: orbit • WHEEL: zoom • SHIFT+DRAG: pan
+    <br>
+
+    <b id="ledCount">512 LEDs</b>
+    |
+    <b id="powerEst">~15A @ 5V</b>
+    |
+    GPU Instanced
+
+    <br>
+
+    <span style="color:var(--muted)">
+      ESP32 + WS2812B • 5V power injection every 64 LEDs recommended
+    </span>
+  </div>
+
+</div>
+
+
+<aside id="right">
+
+  <div class="panel">
+
+    <h3>Virtual Circuit</h3>
+
+    <div class="kv">
+      <b>Controller</b>
+      <span>ESP32 @ 240MHz</span>
+    </div>
+
+    <div class="kv">
+      <b>Protocol</b>
+      <span>WS2812B 800kHz</span>
+    </div>
+
+    <div class="kv">
+      <b>Power</b>
+      <span id="pwr">5V / 30A PSU</span>
+    </div>
+
+    <div class="kv">
+      <b>Mapping</b>
+      <span id="mapInfo">XYZ → serpentine</span>
+    </div>
+
+    <div class="kv">
+      <b>Current Frame</b>
+      <span id="frameInfo">0</span>
+    </div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h3>Arduino Code Export</h3>
+
+    <div class="code-box" id="codeBox">
+// ESP32 WS2812B 8x8x8 example
+#include &lt;FastLED.h&gt;
+
+#define NUM_LEDS 512
+
+CRGB leds[NUM_LEDS];
+
+void setup(){
+  FastLED.addLeds&lt;WS2812B, 5, GRB&gt;(leds, NUM_LEDS);
+}
+
+void loop(){
+  /* animation from simulator */
+}
+    </div>
+
+    <div style="height:8px"></div>
+
+    <div class="row">
+      <button id="btnCopyCode">Copy Code</button>
+      <button id="btnDownloadINO">Download .ino</button>
+    </div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <h3>Structure Preview</h3>
+
+    <p style="font-size:12px;color:var(--muted);line-height:1.5">
+      The structure you requested:
+      each LED is represented as a floating voxel in 3D space.
+      5mm diffused pixels + 3D-printed jig + wiring.
+      The canvas uses WebGL GPU instancing to render up to 4096 LEDs at 60 FPS.
+    </p>
+
+    <div style="height:10px"></div>
+
+    <div class="tag">● 5mm WS2812</div>
+    <div class="tag">⟁ 3D Frame</div>
+    <div class="tag">⚡ Power Injection</div>
+
+  </div>
+
+</aside>
+
+</div>
+
+<script type="module" src="./src/main.js"></script>
+
+</body>
+</html>
